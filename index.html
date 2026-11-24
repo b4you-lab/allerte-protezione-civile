@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor Allerte Protezione Civile</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background: #f8fafc; color: #0f172a; }
+    .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
+    label { display: block; font-weight: 600; margin-top: 1rem; margin-bottom: 0.3rem; }
+    select, button { width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1rem; }
+    button { background: #2563eb; color: white; border: none; font-weight: 600; margin-top: 1.2rem; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    pre { background: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 999px; background: #dbeafe; color: #1e40af; font-weight: 600; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>🚨 Configuratore Allerte Protezione Civile</h1>
+  <div class="card">
+    <p>Seleziona <strong>Regione → Provincia → Comune</strong> per individuare la Zona di Allerta DPC e generare il blocco da aggiungere a <code>config.json</code>.</p>
+    
+    <label for="regione">1. Regione</label>
+    <select id="regione"><option value="">Caricamento dati...</option></select>
+
+    <label for="provincia">2. Provincia</label>
+    <select id="provincia" disabled><option value="">Seleziona prima una regione</option></select>
+
+    <label for="comune">3. Comune</label>
+    <select id="comune" disabled><option value="">Seleziona prima una provincia</option></select>
+
+    <div id="risultato" style="display:none; margin-top: 1.5rem;">
+      <p>Zona di Allerta DPC: <span class="badge" id="zonaBadge"></span></p>
+      <p>Copia questo blocco dentro <code>"subscriptions"</code> nel tuo file <strong>config.json</strong> su GitHub:</p>
+      <pre id="jsonOutput"></pre>
+      <button onclick="copiaJson()">Copia configurazione JSON</button>
+    </div>
+  </div>
+
+  <script>
+    let datiComuni = [];
+
+    fetch('comuni_zone.json')
+      .then(r => r.json())
+      .then(data => {
+        datiComuni = data;
+        const regioni = [...new Set(data.map(d => d.regione))].sort();
+        const selReg = document.getElementById('regione');
+        selReg.innerHTML = '<option value="">-- Scegli Regione --</option>' +
+          regioni.map(r => `<option value="${r}">${r}</option>`).join('');
+      });
+
+    document.getElementById('regione').addEventListener('change', e => {
+      const reg = e.target.value;
+      const selProv = document.getElementById('provincia');
+      const selCom = document.getElementById('comune');
+      document.getElementById('risultato').style.display = 'none';
+      selCom.disabled = true;
+      selCom.innerHTML = '<option value="">Seleziona prima una provincia</option>';
+
+      if (!reg) { selProv.disabled = true; return; }
+      const province = [...new Set(datiComuni.filter(d => d.regione === reg).map(d => d.provincia))].sort();
+      selProv.disabled = false;
+      selProv.innerHTML = '<option value="">-- Scegli Provincia --</option>' +
+        province.map(p => `<option value="${p}">${p}</option>`).join('');
+    });
+
+    document.getElementById('provincia').addEventListener('change', e => {
+      const reg = document.getElementById('regione').value;
+      const prov = e.target.value;
+      const selCom = document.getElementById('comune');
+      document.getElementById('risultato').style.display = 'none';
+
+      if (!prov) { selCom.disabled = true; return; }
+      const comuni = datiComuni.filter(d => d.regione === reg && d.provincia === prov)
+        .sort((a, b) => a.comune.localeCompare(b.comune));
+      selCom.disabled = false;
+      selCom.innerHTML = '<option value="">-- Scegli Comune --</option>' +
+        comuni.map(c => `<option value="${c.istat}">${c.comune}</option>`).join('');
+    });
+
+    document.getElementById('comune').addEventListener('change', e => {
+      const istat = e.target.value;
+      if (!istat) return;
+      const item = datiComuni.find(d => d.istat === istat);
+      document.getElementById('zonaBadge').textContent = `${item.zona_cod} (${item.zona_nome})`;
+      const snippet = {
+        regione: item.regione,
+        provincia: item.provincia,
+        comune: item.comune,
+        istat: item.istat,
+        zona_cod: item.zona_cod
+      };
+      document.getElementById('jsonOutput').textContent = JSON.stringify(snippet, null, 2);
+      document.getElementById('risultato').style.display = 'block';
+    });
+
+    function copiaJson() {
+      navigator.clipboard.writeText(document.getElementById('jsonOutput').textContent);
+      alert('Configurazione copiata! Incollala in config.json su GitHub.');
+    }
+  </script>
+</body>
+</html>
