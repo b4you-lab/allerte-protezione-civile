@@ -1,0 +1,12 @@
+{
+  "min_level": 1,
+  "subscriptions": [
+    {
+      "regione": "Trentino-Alto Adige/Südtirol",
+      "provincia": "Trento",
+      "comune": "Levico Terme",
+      "istat": "022104",
+      "zona_cod": "TAA-A"
+    }
+  ]
+}
