@@ -1,0 +1,48 @@
+name: Monitor Allerte Protezione Civile
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Controlla ogni 30 minuti
+  workflow_dispatch:       # Permette l'avvio manuale con un clic
+
+permissions:
+  contents: write
+
+jobs:
+  check-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installa dipendenze
+        run: |
+          pip install requests geopandas shapely
+
+      - name: Genera mappa Comuni-Zone (solo se mancante)
+        run: |
+          if [ ! -f comuni_zone.json ]; then
+            python build_mapping.py
+          fi
+
+      - name: Controlla bollettini e invia notifiche
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: |
+          python check_alerts.py
+
+      - name: Salva stato e mappa aggiornata nel repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@://github.com"
+          git add comuni_zone.json last_state.json
+          git diff --staged --quiet || git commit -m "Aggiorna stato allerte"
+          git push
