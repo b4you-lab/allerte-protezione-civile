@@ -30,5 +30,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
+          # Crea il file se non esiste (così evitiamo l'errore)
+          touch stato_precedente.json
           git add stato_precedente.json
           git diff --quiet && git diff --staged --quiet || (git commit -m "Aggiornamento stato allerte" && git push)
