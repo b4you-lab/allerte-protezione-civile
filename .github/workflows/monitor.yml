@@ -2,15 +2,14 @@ name: Controllo Alert Protezione Civile
 
 on:
   schedule:
-    # Esegue ogni 30 minuti
     - cron: '*/30 * * * *'
-  workflow_dispatch: # Permette l'avvio manuale dal tab Actions
+  workflow_dispatch:
 
 jobs:
   check-alerts:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Necessario per salvare lo stato nel repo
+      contents: write
 
     steps:
       - name: Checkout del repository
@@ -19,15 +18,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13' # OBBLIGATORIO per aiodpc
+          python-version: '3.10'
 
       - name: Installa dipendenze
-        run: pip install requests aiodpc
+        run: pip install requests
 
       - name: Esegui lo script di controllo
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
         run: python check_alerts.py
 
       - name: Salva lo stato aggiornato (Commit)
