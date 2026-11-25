@@ -41,7 +41,7 @@
         const SUPABASE_KEY = 'sb_publishable_f66hmlBUBDmNrrWk64_vSQ_6PqNr5kZ';
         // ===================================
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const API_BASE = 'https://allertameteo.app/api';
 
         const regioneSelect = document.getElementById('regione');
@@ -107,7 +107,7 @@
                 return;
             }
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('iscrizioni')
                 .insert([{ ntfy_topic: topic, comune: comune }]);
 
