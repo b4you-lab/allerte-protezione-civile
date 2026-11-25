@@ -1,8 +1,11 @@
 import os
 import json
-import smtplib
+import time
 import requests
-from email.message import EmailMessage
+import geopandas as gpd
+
+HOST_API = "https://" + "api." + "github.com"
+PUBLIC_PREFIX = "b4you-dpc-"
 
 LEVEL_MAP = {
     "verde": 0, "nessuna": 0, "0": 0,
@@ -10,8 +13,18 @@ LEVEL_MAP = {
     "arancione": 2, "moderata": 2, "2": 2,
     "rossa": 3, "elevata": 3, "3": 3
 }
-
 LEVEL_LABELS = {0: "🟢 VERDE", 1: "🟡 GIALLA", 2: "🟠 ARANCIONE", 3: "🔴 ROSSA"}
+
+def fetch_json(url, retries=5):
+    for i in range(retries):
+        try:
+            r = requests.get(url, timeout=20)
+            r.raise_for_status()
+            return r.json()
+        except Exception:
+            if i == retries - 1:
+                raise
+            time.sleep(5)
 
 def parse_level(val):
     if not val:
@@ -22,8 +35,7 @@ def parse_level(val):
             return v
     return 0
 
-def send_ntfy(title, message, priority="default"):
-    topic = os.getenv("NTFY_TOPIC")
+def send_ntfy(topic, title, message, priority="default"):
     if not topic:
         return
     requests.post(
@@ -32,81 +44,65 @@ def send_ntfy(title, message, priority="default"):
         headers={"Title": title.encode("utf-8"), "Priority": priority, "Tags": "warning"}
     )
 
-def send_email(subject, body):
-    user = os.getenv("SMTP_USER")
-    password = os.getenv("SMTP_PASS")
-    to_addr = os.getenv("EMAIL_TO")
-    if not (user and password and to_addr):
-        return
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = user
-    msg["To"] = to_addr
-    msg.set_content(body)
-    with smtplib.SMTP_SSL("://gmail.com", 465) as smtp:
-        smtp.login(user, password)
-        smtp.send_message(msg)
-
 def main():
-    with open("config.json", "r", encoding="utf-8") as f:
-        config = json.load(f)
-
     state_file = "last_state.json"
-    if os.path.exists(state_file):
-        with open(state_file, "r", encoding="utf-8") as f:
-            last_state = json.load(f)
-    else:
-        last_state = {}
+    last_state = json.load(open(state_file, "r", encoding="utf-8")) if os.path.exists(state_file) else {}
 
-    # Recupera l'ultimo bollettino JSON dal repository DPC
-    api_url = "https://github.com"
-    files = requests.get(api_url).json()
-    latest_json_url = [f["download_url"] for f in files if f["name"].endswith(".json")][-1]
-    bollettino = requests.get(latest_json_url).json()
+    api_url = HOST_API + "/repos/pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica/contents/files"
+    files = fetch_json(api_url)
+    json_files = sorted([f for f in files if f["name"].endswith(".json")], key=lambda x: x["name"])
+    latest_meta = fetch_json(json_files[-1]["download_url"])
 
-    # Indicizza i dati del bollettino per codice zona
-    zone_data = {}
-    features = bollettino.get("features", bollettino if isinstance(bollettino, list) else [])
-    for item in features:
-        props = item.get("properties", item)
-        z_cod = props.get("Zona_all") or props.get("ZONA_ALL")
-        if z_cod:
-            zone_data[z_cod] = props
-
+    gdf_today = gpd.read_file(latest_meta["topo_json"]["today"])
     new_state = {}
-    min_level = config.get("min_level", 1)
+    active_alerts = {}
 
-    for sub in config["subscriptions"]:
-        z_cod = sub["zona_cod"]
-        comune = sub["comune"]
-        props = zone_data.get(z_cod)
-        if not props:
+    for _, props in gdf_today.iterrows():
+        z_cod = str(props.get("Zona_all") or props.get("ZONA_ALL") or "")
+        z_nome = str(props.get("Nome_zona") or props.get("NOME_ZONA") or z_cod)
+        if not z_cod:
             continue
 
-        # Controlla i rischi principali (Idrogeologico, Idraulico, Temporali)
         rischi = {
             "Idrogeologico": parse_level(props.get("Idrogeo") or props.get("IDROGEO")),
             "Idraulico": parse_level(props.get("Idraulico") or props.get("IDRAULICO")),
             "Temporali": parse_level(props.get("Temporali") or props.get("TEMPORALI"))
         }
         max_lvl = max(rischi.values())
-        state_key = f"{sub['istat']}_{z_cod}"
-        state_signature = f"{max_lvl}_{rischi}"
-        new_state[state_key] = state_signature
+        sig = f"{max_lvl}_{rischi}"
+        new_state[z_cod] = sig
 
-        # Invia alert solo se supera la soglia ed è cambiato rispetto all'ultimo invio
-        if max_lvl >= min_level and last_state.get(state_key) != state_signature:
+        active_alerts[z_cod] = {
+            "zona_cod": z_cod,
+            "zona_nome": z_nome,
+            "livello": max_lvl,
+            "etichetta": LEVEL_LABELS[max_lvl],
+            "rischi": {k: LEVEL_LABELS[v] for k, v in rischi.items() if v > 0}
+        }
+
+        if max_lvl >= 1 and last_state.get(z_cod) != sig:
             dettagli = "\n".join([f"- {k}: {LEVEL_LABELS[v]}" for k, v in rischi.items() if v > 0])
-            titolo = f"Allerta Protezione Civile: {comune} ({LEVEL_LABELS[max_lvl]})"
-            corpo = f"Zona di allerta: {z_cod}\nComune: {comune} ({sub['provincia']})\n\nCriticità rilevate:\n{dettagli}"
-            
+            titolo = f"Allerta DPC {z_cod} ({LEVEL_LABELS[max_lvl]})"
+            corpo = f"Zona: {z_cod} - {z_nome}\n\nCriticità:\n{dettagli}"
             prio = "urgent" if max_lvl >= 3 else ("high" if max_lvl == 2 else "default")
-            send_ntfy(titolo, corpo, priority=prio)
-            send_email(titolo, corpo)
-            print(f"Alert inviato per {comune}")
+
+            # Pubblica sul canale pubblico della zona (per tutti gli utenti)
+            safe_topic = PUBLIC_PREFIX + z_cod.replace(" ", "_")
+            send_ntfy(safe_topic, titolo, corpo, priority=prio)
+
+            # Invia anche sul tuo topic personale se configurato nei Secrets
+            personal_topic = os.getenv("NTFY_TOPIC")
+            if personal_topic:
+                send_ntfy(personal_topic, titolo, corpo, priority=prio)
 
     with open(state_file, "w", encoding="utf-8") as f:
         json.dump(new_state, f, indent=2)
+
+    with open("active_alerts.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "aggiornamento": latest_meta.get("data", ""),
+            "zone": active_alerts
+        }, f, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
     main()
