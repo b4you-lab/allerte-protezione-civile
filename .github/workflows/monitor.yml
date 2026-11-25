@@ -19,10 +19,10 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.10' # Lasciamo 3.10 che va benissimo
 
       - name: Installa dipendenze
-        run: pip install requests
+        run: pip install requests aiodpc # Aggiunto aiodpc qui
 
       - name: Esegui lo script di controllo
         env:
