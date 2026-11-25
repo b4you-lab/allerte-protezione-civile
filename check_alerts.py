@@ -19,7 +19,7 @@ def main():
     zone_da_monitorare = { sub['zona_cod']: sub['comune'] for sub in subscriptions }
 
     # NUOVO URL (CSV)
-    URL_BOLLETTINO = "https://raw.githubusercontent.com/opendatasicilia/DPC-bollettini-criticita-idrogeologica-idraulica/master/bollettino-oggi-zone-latest.csv"
+    URL_BOLLETTINO = "https://raw.githubusercontent.com/opendatasicilia/DPC-bollettini-criticita-idrogeologica-idraulica/master/oggi/bollettino-oggi-zone-latest.csv"
 
     try:
         response = requests.get(URL_BOLLETTINO, timeout=15)
