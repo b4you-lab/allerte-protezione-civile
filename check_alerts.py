@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 
 # URL del bollettino nazionale DPC (JSON)
-URL_BOLLETTINO = "https://raw.githubusercontent.com/pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica/master/files/bollettino_criticita.json"
+URL_BOLLETTINO = "https://raw.githubusercontent.com/opendatasicilia/DPC-bollettini-criticita-idrogeologica-idraulica/master/bollettino-oggi-zone-latest.csv"
 
 def invia_notifica(messaggio):
     token = os.getenv("TELEGRAM_TOKEN")
