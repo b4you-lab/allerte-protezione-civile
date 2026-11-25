@@ -36,9 +36,9 @@ def salva_stato(stato):
         json.dump(stato, f)
 
 def leggi_iscrizioni():
-    # CORREZIONE: Usiamo solo l'header 'apikey' senza 'Authorization: Bearer'
     headers = {
-        "apikey": SUPABASE_KEY
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
     }
     url = f"{SUPABASE_URL}/rest/v1/iscrizioni?select=ntfy_topic,comune"
     r = requests.get(url, headers=headers, timeout=15)
