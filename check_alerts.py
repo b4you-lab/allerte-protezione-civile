@@ -5,7 +5,7 @@ import requests
 from datetime import datetime
 
 # === CONFIGURAZIONE SUPABASE ===
-SUPABASE_URL = "https://pkyagmggdbnajsfjjwxj.supabase.co"
+SUPABASE_URL = "https://pkaygmgqdbnajsfjjwxj.supabase.co"
 SUPABASE_KEY = "sb_publishable_f66hmlBUBDmNrrWk64_vSQ_6PqNr5kZ"
 # ===============================
 
