@@ -1,108 +1,100 @@
-import os
 import json
-import time
 import requests
-import geopandas as gpd
+import os
+import sys
+from datetime import datetime
 
-HOST_API = "https://" + "api." + "github.com"
-PUBLIC_PREFIX = "b4you-dpc-"
+# URL del bollettino nazionale DPC (JSON)
+URL_BOLLETTINO = "https://raw.githubusercontent.com/pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica/master/files/bollettino_criticita.json"
 
-LEVEL_MAP = {
-    "verde": 0, "nessuna": 0, "0": 0,
-    "gialla": 1, "ordinaria": 1, "1": 1,
-    "arancione": 2, "moderata": 2, "2": 2,
-    "rossa": 3, "elevata": 3, "3": 3
-}
-LEVEL_LABELS = {0: "🟢 VERDE", 1: "🟡 GIALLA", 2: "🟠 ARANCIONE", 3: "🔴 ROSSA"}
-
-def fetch_json(url, retries=5):
-    for i in range(retries):
-        try:
-            r = requests.get(url, timeout=20)
-            r.raise_for_status()
-            return r.json()
-        except Exception:
-            if i == retries - 1:
-                raise
-            time.sleep(5)
-
-def parse_level(val):
-    if not val:
-        return 0
-    s = str(val).lower()
-    for k, v in LEVEL_MAP.items():
-        if k in s:
-            return v
-    return 0
-
-def send_ntfy(topic, title, message, priority="default"):
-    if not topic:
+def invia_notifica(messaggio):
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("CHAT_ID")
+    if not token or not chat_id:
+        print("Credenziali Telegram mancanti. Salto notifica.")
         return
-    requests.post(
-        f"https://ntfy.sh{topic}",
-        data=message.encode("utf-8"),
-        headers={"Title": title.encode("utf-8"), "Priority": priority, "Tags": "warning"}
-    )
+    
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": messaggio, "parse_mode": "HTML"}
+    try:
+        requests.post(url, json=payload, timeout=10)
+        print("Notifica inviata.")
+    except Exception as e:
+        print(f"Errore invio notifica: {e}")
+
+def carica_stato():
+    if os.path.exists('stato_precedente.json'):
+        with open('stato_precedente.json', 'r') as f:
+            return json.load(f)
+    return {}
+
+def salva_stato(stato):
+    with open('stato_precedente.json', 'w') as f:
+        json.dump(stato, f)
 
 def main():
-    state_file = "last_state.json"
-    last_state = json.load(open(state_file, "r", encoding="utf-8")) if os.path.exists(state_file) else {}
+    print(f"Controllo del {datetime.now().isoformat()}")
+    
+    # 1. Carica la configurazione
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+    
+    min_level = config.get('min_level', 1)
+    subscriptions = config.get('subscriptions', [])
+    
+    # Estraiamo le zone da monitorare dal config
+    zone_da_monitorare = { sub['zona_cod']: sub['comune'] for sub in subscriptions }
 
-    api_url = HOST_API + "/repos/pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica/contents/files"
-    files = fetch_json(api_url)
-    json_files = sorted([f for f in files if f["name"].endswith(".json")], key=lambda x: x["name"])
-    latest_meta = fetch_json(json_files[-1]["download_url"])
+    # 2. Scarica il bollettino
+    try:
+        response = requests.get(URL_BOLLETTINO, timeout=15)
+        response.raise_for_status()
+        bollettino = response.json()
+    except Exception as e:
+        print(f"Errore nel download del bollettino: {e}")
+        sys.exit(1)
 
-    gdf_today = gpd.read_file(latest_meta["topo_json"]["today"])
-    new_state = {}
-    active_alerts = {}
+    stato_precedente = carica_stato()
+    stato_attuale = {}
+    messaggi_alert = []
 
-    for _, props in gdf_today.iterrows():
-        z_cod = str(props.get("Zona_all") or props.get("ZONA_ALL") or "")
-        z_nome = str(props.get("Nome_zona") or props.get("NOME_ZONA") or z_cod)
-        if not z_cod:
-            continue
+    # Mappa dei livelli (es. 0=Verde, 1=Gialla, 2=Arancione, 3=Rossa)
+    # Da adattare in base alla struttura esatta del JSON DPC
+    livelli_map = {0: "Verde", 1: "Gialla", 2: "Arancione", 3: "Rossa"}
 
-        rischi = {
-            "Idrogeologico": parse_level(props.get("Idrogeo") or props.get("IDROGEO")),
-            "Idraulico": parse_level(props.get("Idraulico") or props.get("IDRAULICO")),
-            "Temporali": parse_level(props.get("Temporali") or props.get("TEMPORALI"))
-        }
-        max_lvl = max(rischi.values())
-        sig = f"{max_lvl}_{rischi}"
-        new_state[z_cod] = sig
+    # 3. Analizza il bollettino
+    # Nota: La struttura del JSON DPC potrebbe variare, questo è un esempio logico
+    for zona in bollettino.get('zone', []):
+        codice_zona = zona.get('codice_zona')
+        
+        if codice_zona in zone_da_monitorare:
+            # Estrai il livello di criticità (adatta la chiave in base al JSON reale)
+            livello_raw = zona.get('livello_criticita', 0) 
+            
+            # Se il livello supera la soglia minima impostata nel config
+            if livello_raw >= min_level:
+                stato_attuale[codice_zona] = livello_raw
+                nome_comune = zone_da_monitorare[codice_zona]
+                
+                # Controlla se è un nuovo alert
+                if stato_precedente.get(codice_zona) != livello_raw:
+                    messaggi_alert.append(
+                        f"🚨 <b>Allerta Protezione Civile</b>\n"
+                        f"Comune: <b>{nome_comune}</b>\n"
+                        f"Zona: {codice_zona}\n"
+                        f"Livello: <b>{livelli_map.get(livello_raw, 'Sconosciuto')}</b>"
+                    )
+            else:
+                # Se il livello scende sotto la soglia, resettiamo lo stato
+                stato_attuale[codice_zona] = 0
 
-        active_alerts[z_cod] = {
-            "zona_cod": z_cod,
-            "zona_nome": z_nome,
-            "livello": max_lvl,
-            "etichetta": LEVEL_LABELS[max_lvl],
-            "rischi": {k: LEVEL_LABELS[v] for k, v in rischi.items() if v > 0}
-        }
+    # 4. Invia notifiche
+    for msg in messaggi_alert:
+        invia_notifica(msg)
 
-        if max_lvl >= 1 and last_state.get(z_cod) != sig:
-            dettagli = "\n".join([f"- {k}: {LEVEL_LABELS[v]}" for k, v in rischi.items() if v > 0])
-            titolo = f"Allerta DPC {z_cod} ({LEVEL_LABELS[max_lvl]})"
-            corpo = f"Zona: {z_cod} - {z_nome}\n\nCriticità:\n{dettagli}"
-            prio = "urgent" if max_lvl >= 3 else ("high" if max_lvl == 2 else "default")
-
-            # Pubblica sul canale pubblico della zona (per tutti gli utenti)
-            safe_topic = PUBLIC_PREFIX + z_cod.replace(" ", "_")
-            send_ntfy(safe_topic, titolo, corpo, priority=prio)
-
-            # Invia anche sul tuo topic personale se configurato nei Secrets
-            personal_topic = os.getenv("NTFY_TOPIC")
-            if personal_topic:
-                send_ntfy(personal_topic, titolo, corpo, priority=prio)
-
-    with open(state_file, "w", encoding="utf-8") as f:
-        json.dump(new_state, f, indent=2)
-
-    with open("active_alerts.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "aggiornamento": latest_meta.get("data", ""),
-            "zone": active_alerts
-        }, f, ensure_ascii=False, indent=2)
+    # 5. Salva il nuovo stato
+    salva_stato(stato_attuale)
+    print(f"Controllo completato. {len(messaggi_alert)} nuovi alert rilevati.")
 
 if __name__ == "__main__":
     main()
