@@ -1,121 +1,129 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Allerte Protezione Civile Italia</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background: #f8fafc; color: #0f172a; }
-    .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
-    label { display: block; font-weight: 600; margin-top: 1rem; margin-bottom: 0.3rem; }
-    select, button { width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1rem; }
-    button { background: #2563eb; color: white; border: none; font-weight: 600; margin-top: 1rem; cursor: pointer; }
-    button:hover { background: #1d4ed8; }
-    .status-box { padding: 1rem; border-radius: 8px; margin-top: 1rem; background: #f1f5f9; border-left: 5px solid #64748b; }
-    .lvl-0 { border-left-color: #22c55e; background: #f0fdf4; }
-    .lvl-1 { border-left-color: #eab308; background: #fefce8; }
-    .lvl-2 { border-left-color: #f97316; background: #fff7ed; }
-    .lvl-3 { border-left-color: #ef4444; background: #fef2f2; }
-    code { background: #e2e8f0; padding: 0.2rem 0.4rem; border-radius: 4px; font-weight: bold; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iscrizione Allerte Protezione Civile</title>
+    <style>
+        body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; padding: 0 1rem; }
+        label { display: block; margin-top: 1rem; font-weight: bold; }
+        select, input, button { width: 100%; padding: 0.5rem; margin-top: 0.3rem; box-sizing: border-box; }
+        button { margin-top: 1.5rem; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #messaggio { margin-top: 1rem; padding: 1rem; border-radius: 4px; }
+        .successo { background: #d4edda; color: #155724; }
+        .errore { background: #f8d7da; color: #721c24; }
+    </style>
 </head>
 <body>
-  <h1>🚨 Allerte Protezione Civile Italia</h1>
-  <div class="card">
-    <p>Seleziona <strong>Regione → Provincia → Comune</strong> per verificare lo stato di allerta attuale e attivare le notifiche push gratuite sul tuo cellulare.</p>
-    
-    <label for="regione">1. Regione</label>
-    <select id="regione"><option value="">Caricamento dati...</option></select>
+    <h2>Iscriviti agli avvisi della Protezione Civile</h2>
+    <p>Scegli il tuo comune e ricevi notifiche push tramite ntfy.</p>
 
-    <label for="provincia">2. Provincia</label>
-    <select id="provincia" disabled><option value="">Seleziona prima una regione</option></select>
+    <label for="ntfy">Il tuo topic ntfy (es. <code>allerte-mario-x7k2</code>)</label>
+    <input type="text" id="ntfy" placeholder="Scegli un nome univoco e difficile da indovinare" required>
 
-    <label for="comune">3. Comune</label>
-    <select id="comune" disabled><option value="">Seleziona prima una provincia</option></select>
+    <label for="regione">Regione</label>
+    <select id="regione" required><option value="">Caricamento...</option></select>
 
-    <div id="risultato" style="display:none; margin-top: 1.5rem;">
-      <div id="statusBox" class="status-box">
-        <strong id="statoTitolo"></strong>
-        <p id="statoDettagli" style="margin: 0.5rem 0 0 0;"></p>
-      </div>
+    <label for="provincia">Provincia</label>
+    <select id="provincia" disabled required><option value="">Scegli prima la regione</option></select>
 
-      <h3>📲 Ricevi notifiche sul telefono per questa zona</h3>
-      <p>1. Installa l'app gratuita <strong>ntfy</strong> (Android / iOS).<br>
-         2. Iscriviti al canale pubblico della tua zona: <code id="topicCode"></code></p>
-      <button onclick="copiaTopic()">Copia nome canale ntfy</button>
-    </div>
-  </div>
+    <label for="comune">Comune</label>
+    <select id="comune" disabled required><option value="">Scegli prima la provincia</option></select>
 
-  <script>
-    let datiComuni = [];
-    let datiAllerte = {};
-    let currentTopic = "";
+    <button onclick="iscriviti()">Iscriviti</button>
+    <div id="messaggio"></div>
 
-    Promise.all([
-      fetch('comuni_zone.json').then(r => r.json()),
-      fetch('active_alerts.json').then(r => r.json()).catch(() => ({ zone: {} }))
-    ]).then(([comuni, allerte]) => {
-      datiComuni = comuni;
-      datiAllerte = allerte.zone || {};
-      const regioni = [...new Set(comuni.map(d => d.regione))].sort();
-      const selReg = document.getElementById('regione');
-      selReg.innerHTML = '<option value="">-- Scegli Regione --</option>' +
-        regioni.map(r => `<option value="${r}">${r}</option>`).join('');
-    });
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script>
+        // === SOSTITUISCI CON I TUOI DATI ===
+        const SUPABASE_URL = 'https://pkyagmggdbnajsfjjwxj.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_f66hmlBUBDmNrrWk64_vSQ_6PqNr5kZ';
+        // ===================================
 
-    document.getElementById('regione').addEventListener('change', e => {
-      const reg = e.target.value;
-      const selProv = document.getElementById('provincia');
-      const selCom = document.getElementById('comune');
-      document.getElementById('risultato').style.display = 'none';
-      selCom.disabled = true;
-      selCom.innerHTML = '<option value="">Seleziona prima una provincia</option>';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const API_BASE = 'https://allertameteo.app/api';
 
-      if (!reg) { selProv.disabled = true; return; }
-      const province = [...new Set(datiComuni.filter(d => d.regione === reg).map(d => d.provincia))].sort();
-      selProv.disabled = false;
-      selProv.innerHTML = '<option value="">-- Scegli Provincia --</option>' +
-        province.map(p => `<option value="${p}">${p}</option>`).join('');
-    });
+        const regioneSelect = document.getElementById('regione');
+        const provinciaSelect = document.getElementById('provincia');
+        const comuneSelect = document.getElementById('comune');
+        const messaggioDiv = document.getElementById('messaggio');
 
-    document.getElementById('provincia').addEventListener('change', e => {
-      const reg = document.getElementById('regione').value;
-      const prov = e.target.value;
-      const selCom = document.getElementById('comune');
-      document.getElementById('risultato').style.display = 'none';
+        async function caricaRegioni() {
+            try {
+                const res = await fetch(`${API_BASE}/regioni`);
+                const regioni = await res.json();
+                regioneSelect.innerHTML = '<option value="">Scegli una regione</option>';
+                regioni.forEach(r => {
+                    regioneSelect.innerHTML += `<option value="${r.nome || r}">${r.nome || r}</option>`;
+                });
+            } catch (e) {
+                regioneSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+            }
+        }
 
-      if (!prov) { selCom.disabled = true; return; }
-      const comuni = datiComuni.filter(d => d.regione === reg && d.provincia === prov)
-        .sort((a, b) => a.comune.localeCompare(b.comune));
-      selCom.disabled = false;
-      selCom.innerHTML = '<option value="">-- Scegli Comune --</option>' +
-        comuni.map(c => `<option value="${c.istat}">${c.comune}</option>`).join('');
-    });
+        regioneSelect.addEventListener('change', async () => {
+            provinciaSelect.disabled = true;
+            comuneSelect.disabled = true;
+            comuneSelect.innerHTML = '<option value="">Scegli prima la provincia</option>';
+            if (!regioneSelect.value) return;
 
-    document.getElementById('comune').addEventListener('change', e => {
-      const istat = e.target.value;
-      if (!istat) return;
-      const item = datiComuni.find(d => d.istat === istat);
-      const info = datiAllerte[item.zona_cod] || { livello: 0, etichetta: "🟢 VERDE", rischi: {} };
+            try {
+                const res = await fetch(`${API_BASE}/province?regione=${encodeURIComponent(regioneSelect.value)}`);
+                const province = await res.json();
+                provinciaSelect.innerHTML = '<option value="">Scegli una provincia</option>';
+                province.forEach(p => {
+                    provinciaSelect.innerHTML += `<option value="${p.nome || p}">${p.nome || p}</option>`;
+                });
+                provinciaSelect.disabled = false;
+            } catch (e) {
+                provinciaSelect.innerHTML = '<option value="">Errore</option>';
+            }
+        });
 
-      const box = document.getElementById('statusBox');
-      box.className = 'status-box lvl-' + info.livello;
-      document.getElementById('statoTitolo').textContent = `${item.comune} (${item.zona_cod}): ${info.etichetta}`;
-      
-      const rischiKeys = Object.keys(info.rischi || {});
-      document.getElementById('statoDettagli').textContent = rischiKeys.length > 0
-        ? "Criticità attive: " + rischiKeys.map(k => `${k} (${info.rischi[k]})`).join(", ")
-        : "Nessuna criticità meteo-idrogeologica segnalata per questa zona.";
+        provinciaSelect.addEventListener('change', async () => {
+            comuneSelect.disabled = true;
+            if (!provinciaSelect.value) return;
 
-      currentTopic = "b4you-dpc-" + item.zona_cod.replace(/\s+/g, '_');
-      document.getElementById('topicCode').textContent = currentTopic;
-      document.getElementById('risultato').style.display = 'block';
-    });
+            try {
+                const res = await fetch(`${API_BASE}/comuni?provincia=${encodeURIComponent(provinciaSelect.value)}`);
+                const comuni = await res.json();
+                comuneSelect.innerHTML = '<option value="">Scegli un comune</option>';
+                comuni.forEach(c => {
+                    comuneSelect.innerHTML += `<option value="${c.nome || c}">${c.nome || c}</option>`;
+                });
+                comuneSelect.disabled = false;
+            } catch (e) {
+                comuneSelect.innerHTML = '<option value="">Errore</option>';
+            }
+        });
 
-    function copiaTopic() {
-      navigator.clipboard.writeText(currentTopic);
-      alert('Canale "' + currentTopic + '" copiato! Incollalo nell\'app ntfy per ricevere le allerte.');
-    }
-  </script>
+        async function iscriviti() {
+            const topic = document.getElementById('ntfy').value.trim();
+            const comune = comuneSelect.value;
+
+            if (!topic || !comune) {
+                mostraMessaggio('Compila tutti i campi.', 'errore');
+                return;
+            }
+
+            const { error } = await supabase
+                .from('iscrizioni')
+                .insert([{ ntfy_topic: topic, comune: comune }]);
+
+            if (error) {
+                mostraMessaggio('Errore: ' + error.message, 'errore');
+            } else {
+                mostraMessaggio(`Iscrizione avvenuta! Riceverai notifiche per <b>${comune}</b>.<br>Iscriviti al topic <code>${topic}</code> sull'app ntfy.`, 'successo');
+            }
+        }
+
+        function mostraMessaggio(testo, classe) {
+            messaggioDiv.innerHTML = testo;
+            messaggioDiv.className = classe;
+        }
+
+        caricaRegioni();
+    </script>
 </body>
 </html>
