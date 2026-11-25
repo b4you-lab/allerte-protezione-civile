@@ -4,29 +4,33 @@ import requests
 import geopandas as gpd
 from shapely.geometry import Point
 
+HOST_RAW = "https://" + "raw." + "githubusercontent.com"
+HOST_API = "https://" + "api." + "github.com"
+
 def fetch_json(url, retries=5):
     for i in range(retries):
         try:
             r = requests.get(url, timeout=20)
             r.raise_for_status()
             return r.json()
-        except Exception as e:
+        except Exception:
             if i == retries - 1:
                 raise
             print(f"Errore temporaneo su {url}, nuovo tentativo tra 5s...")
             time.sleep(5)
 
 print("Scaricamento comuni italiani...")
-comuni_url = "https://githubusercontent.com"
+comuni_url = HOST_RAW + "/matteocontrini/comuni-json/master/comuni.json"
 comuni_data = fetch_json(comuni_url)
 
 print("Scaricamento Zone di Allerta Protezione Civile...")
-api_url = "https://github.com"
+api_url = HOST_API + "/repos/pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica/contents/aree/geojson"
 files = fetch_json(api_url)
 geojson_url = [f["download_url"] for f in files if f["name"].endswith(".geojson")][-1]
 gdf_zone = gpd.read_file(geojson_url).to_crs(epsg=4326)
 
-coord_url = "https://githubusercontent.com"
+print("Scaricamento coordinate comuni...")
+coord_url = HOST_RAW + "/opendatasicilia/comuni-italiani/main/dati/comuni.json"
 coord_list = fetch_json(coord_url)
 coord_map = {str(c["pro_com_t"]).zfill(6): (float(c["long"]), float(c["lat"])) for c in coord_list if c.get("lat")}
 
