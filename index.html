@@ -5,41 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iscrizione Allerte Protezione Civile</title>
     <style>
-        body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; padding: 0 1rem; }
-        label { display: block; margin-top: 1rem; font-weight: bold; }
-        select, input, button { width: 100%; padding: 0.5rem; margin-top: 0.3rem; box-sizing: border-box; }
-        button { margin-top: 1.5rem; background: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        #messaggio { margin-top: 1rem; padding: 1rem; border-radius: 4px; }
-        .successo { background: #d4edda; color: #155724; }
-        .errore { background: #f8d7da; color: #721c24; }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+        label { display: block; margin-top: 1.2rem; font-weight: 600; font-size: 0.9rem; }
+        select, input, button { width: 100%; padding: 0.6rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { margin-top: 1.5rem; background: #0066cc; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:hover { background: #004c99; }
+        #messaggio { margin-top: 1.2rem; padding: 0.8rem; border-radius: 6px; display: none; font-size: 0.9rem; }
+        .successo { background: #d4edda; color: #155724; display: block !important; }
+        .errore { background: #f8d7da; color: #721c24; display: block !important; }
     </style>
 </head>
 <body>
-    <h2>Iscriviti agli avvisi della Protezione Civile</h2>
-    <p>Scegli il tuo comune e ricevi notifiche push tramite ntfy.</p>
+    <h2>Allerte Protezione Civile</h2>
+    <p style="color: #666; font-size: 0.9rem;">Ricevi notifiche push tramite <strong>ntfy</strong> sul tuo comune.</p>
 
-    <label for="ntfy">Il tuo topic ntfy (es. <code>allerte-mario-x7k2</code>)</label>
-    <input type="text" id="ntfy" placeholder="Scegli un nome univoco e difficile da indovinare" required>
+    <label for="ntfy">Topic ntfy personale</label>
+    <input type="text" id="ntfy" placeholder="es. mia-allerta-protezione-civile-77" required>
 
     <label for="regione">Regione</label>
     <select id="regione" required><option value="">Caricamento...</option></select>
 
     <label for="provincia">Provincia</label>
-    <select id="provincia" disabled required><option value="">Scegli prima la regione</option></select>
+    <select id="provincia" disabled required><option value="">Seleziona prima la regione</option></select>
 
     <label for="comune">Comune</label>
-    <select id="comune" disabled required><option value="">Scegli prima la provincia</option></select>
+    <select id="comune" disabled required><option value="">Seleziona prima la provincia</option></select>
 
-    <button onclick="iscriviti()">Iscriviti</button>
+    <button onclick="iscriviti()">Iscriviti alle Notifiche</button>
     <div id="messaggio"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // === SOSTITUISCI CON I TUOI DATI ===
         const SUPABASE_URL = 'https://pkaygmgqdbnajsfjjwxj.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_f66hmlBUBDmNrrWk64_vSQ_6PqNr5kZ';
-        // ===================================
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrYXlnbWdxZGJuYWpzZmpqd3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU2MjgwODQsImV4cCI6MjExMTIwNDA4NH0.XJgDZ1voMOHDG0iisIWgcLVkW4sKKTMpLWVsBH0A1CE';
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const API_BASE = 'https://allertameteo.app/api';
@@ -52,49 +50,60 @@
         async function caricaRegioni() {
             try {
                 const res = await fetch(`${API_BASE}/regioni`);
-                const regioni = await res.json();
-                regioneSelect.innerHTML = '<option value="">Scegli una regione</option>';
-                regioni.forEach(r => {
-                    regioneSelect.innerHTML += `<option value="${r.nome || r}">${r.nome || r}</option>`;
+                const json = await res.json();
+                const lista = Array.isArray(json) ? json : (json.data || []);
+
+                regioneSelect.innerHTML = '<option value="">-- Seleziona Regione --</option>';
+                lista.forEach(r => {
+                    const nome = typeof r === 'string' ? r : (r.nome || r.name);
+                    regioneSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
                 });
             } catch (e) {
-                regioneSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                regioneSelect.innerHTML = '<option value="">Errore nel caricamento regioni</option>';
             }
         }
 
         regioneSelect.addEventListener('change', async () => {
             provinciaSelect.disabled = true;
             comuneSelect.disabled = true;
-            comuneSelect.innerHTML = '<option value="">Scegli prima la provincia</option>';
+            provinciaSelect.innerHTML = '<option value="">Caricamento...</option>';
+            comuneSelect.innerHTML = '<option value="">Seleziona prima la provincia</option>';
             if (!regioneSelect.value) return;
 
             try {
                 const res = await fetch(`${API_BASE}/province?regione=${encodeURIComponent(regioneSelect.value)}`);
-                const province = await res.json();
-                provinciaSelect.innerHTML = '<option value="">Scegli una provincia</option>';
-                province.forEach(p => {
-                    provinciaSelect.innerHTML += `<option value="${p.nome || p}">${p.nome || p}</option>`;
+                const json = await res.json();
+                const lista = Array.isArray(json) ? json : (json.data || []);
+
+                provinciaSelect.innerHTML = '<option value="">-- Seleziona Provincia --</option>';
+                lista.forEach(p => {
+                    const nome = typeof p === 'string' ? p : (p.nome || p.name);
+                    provinciaSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
                 });
                 provinciaSelect.disabled = false;
             } catch (e) {
-                provinciaSelect.innerHTML = '<option value="">Errore</option>';
+                provinciaSelect.innerHTML = '<option value="">Errore caricamento province</option>';
             }
         });
 
         provinciaSelect.addEventListener('change', async () => {
             comuneSelect.disabled = true;
+            comuneSelect.innerHTML = '<option value="">Caricamento...</option>';
             if (!provinciaSelect.value) return;
 
             try {
                 const res = await fetch(`${API_BASE}/comuni?provincia=${encodeURIComponent(provinciaSelect.value)}`);
-                const comuni = await res.json();
-                comuneSelect.innerHTML = '<option value="">Scegli un comune</option>';
-                comuni.forEach(c => {
-                    comuneSelect.innerHTML += `<option value="${c.nome || c}">${c.nome || c}</option>`;
+                const json = await res.json();
+                const lista = Array.isArray(json) ? json : (json.data || []);
+
+                comuneSelect.innerHTML = '<option value="">-- Seleziona Comune --</option>';
+                lista.forEach(c => {
+                    const nome = typeof c === 'string' ? c : (c.nome || c.name);
+                    comuneSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
                 });
                 comuneSelect.disabled = false;
             } catch (e) {
-                comuneSelect.innerHTML = '<option value="">Errore</option>';
+                comuneSelect.innerHTML = '<option value="">Errore caricamento comuni</option>';
             }
         });
 
@@ -103,18 +112,20 @@
             const comune = comuneSelect.value;
 
             if (!topic || !comune) {
-                mostraMessaggio('Compila tutti i campi.', 'errore');
+                mostraMessaggio('Compila tutti i campi prima di procedere.', 'errore');
                 return;
             }
 
-            const { error } = await supabaseClient
-                .from('iscrizioni')
-                .insert([{ ntfy_topic: topic, comune: comune }]);
+            try {
+                const { error } = await supabaseClient
+                    .from('iscrizioni')
+                    .insert([{ ntfy_topic: topic, comune: comune }]);
 
-            if (error) {
-                mostraMessaggio('Errore: ' + error.message, 'errore');
-            } else {
-                mostraMessaggio(`Iscrizione avvenuta! Riceverai notifiche per <b>${comune}</b>.<br>Iscriviti al topic <code>${topic}</code> sull'app ntfy.`, 'successo');
+                if (error) throw error;
+
+                mostraMessaggio(`Iscrizione registrata! Riceverai le allerte per <b>${comune}</b> sul topic ntfy <code>${topic}</code>.`, 'successo');
+            } catch (err) {
+                mostraMessaggio('Errore durante il salvataggio: ' + err.message, 'errore');
             }
         }
 
