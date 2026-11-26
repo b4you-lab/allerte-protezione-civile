@@ -3,79 +3,331 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Allerte Protezione Civile</title>
+    <title>Allerte Protezione Civile - Notifiche Push in Tempo Reale</title>
+    <meta name="description" content="Ricevi notifiche push istantanee e gratuite sulle allerte meteo della Protezione Civile per il tuo comune.">
+
     <style>
+        :root {
+            --primary: #0066cc;
+            --primary-hover: #004c99;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-bmac: #FFDD00;
+            --accent-paypal: #0070ba;
+        }
+
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 500px;
-            margin: 2.5rem auto;
-            padding: 0 1.2rem;
-            color: #1a1a1a;
-            background-color: #fafafa;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 1.5rem 1rem 3rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .card {
-            background: #ffffff;
-            padding: 1.8rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-            border: 1px solid #eaeaea;
-        }
-        h2 { margin-top: 0; color: #111; font-size: 1.4rem; }
-        p.subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.4; }
-        label { display: block; margin-top: 1rem; font-weight: 600; font-size: 0.85rem; color: #333; }
-        select, input, button {
+
+        .container {
             width: 100%;
-            padding: 0.65rem 0.8rem;
-            margin-top: 0.35rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            max-width: 520px;
+        }
+
+        /* Card Principale */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
             box-sizing: border-box;
+        }
+
+        /* Header con badge */
+        .badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.8rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 0 0.5rem 0;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        p.description {
             font-size: 0.95rem;
+            color: var(--text-muted);
+            margin: 0 0 1.5rem 0;
+            line-height: 1.5;
         }
-        select:disabled, input:disabled { background-color: #f3f3f3; cursor: not-allowed; }
-        button {
-            margin-top: 1.6rem;
-            background: #0066cc;
-            color: #ffffff;
+
+        /* Guida rapida */
+        .how-it-works {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.9rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .how-it-works strong { color: #0f172a; }
+        .how-it-works ol { margin: 0.4rem 0 0 1.2rem; padding: 0; }
+        .how-it-works li { margin-bottom: 0.3rem; }
+
+        /* Form */
+        label {
+            display: block;
+            font-size: 0.85rem;
             font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: background 0.2s ease;
+            color: #374151;
+            margin-top: 1rem;
+            margin-bottom: 0.3rem;
         }
-        button:hover { background: #004c99; }
+
+        select, input {
+            width: 100%;
+            padding: 0.75rem 0.85rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            background: #ffffff;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+        }
+
+        select:disabled, input:disabled {
+            background: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .helper-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+        }
+
+        /* Pulsante Invio */
+        button.btn-primary {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 102, 204, 0.2);
+        }
+
+        button.btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        button.btn-primary:active {
+            transform: scale(0.99);
+        }
+
+        /* Box Notifiche */
         #messaggio {
             margin-top: 1.2rem;
-            padding: 0.8rem;
-            border-radius: 6px;
+            padding: 0.9rem;
+            border-radius: 8px;
             display: none;
             font-size: 0.9rem;
             line-height: 1.4;
         }
-        .successo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block !important; }
-        .errore { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block !important; }
-        .loading-text { font-size: 0.85rem; color: #777; margin-top: 0.4rem; }
+
+        .successo {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            display: block !important;
+        }
+
+        .errore {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            display: block !important;
+        }
+
+        /* Sezione Sostieni il Progetto */
+        .support-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .support-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 0.3rem;
+        }
+
+        .support-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .donation-buttons {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-donate {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-donate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-bmac {
+            background-color: var(--accent-bmac);
+            color: #000000;
+            border: 1px solid #e0c200;
+        }
+
+        .btn-paypal {
+            background-color: var(--accent-paypal);
+            color: #ffffff;
+        }
+
+        .btn-donate svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Footer & Info */
+        footer {
+            margin-top: 1.8rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>🚨 Notifiche Protezione Civile</h2>
-        <p class="subtitle">Ricevi avvisi meteo in tempo reale per il tuo comune tramite l'app <strong>ntfy</strong>.</p>
+    <div class="container">
+        <div class="card">
+            <span class="badge">Dati Ufficiali DPC • Open Source</span>
+            <h1>🚨 Allerte Protezione Civile</h1>
+            <p class="description">Ricevi notifiche push istantanee sul tuo smartphone o PC non appena viene emesso un bollettino di allerta per il tuo comune.</p>
 
-        <label for="ntfy">Il tuo Topic ntfy personale</label>
-        <input type="text" id="ntfy" placeholder="es. allerta-mario-rossi-84" required>
+            <!-- Box informativo per gli utenti -->
+            <div class="how-it-works">
+                <strong>Come ricevere le notifiche in 2 passaggi:</strong>
+                <ol>
+                    <li>Scegli il tuo comune e clicca <b>Attiva Notifiche</b>.</li>
+                    <li>Scarica l'app gratuita <b>ntfy</b> (<a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">Android</a> / <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank">iOS</a>) o aprila da web e aggiungi il tuo Topic.</li>
+                </ol>
+            </div>
 
-        <label for="regione">Regione</label>
-        <select id="regione" disabled><option value="">Scaricamento elenco comuni...</option></select>
+            <!-- Selezione Luogo -->
+            <label for="regione">1. Regione</label>
+            <select id="regione" disabled><option value="">Scaricamento elenco comuni...</option></select>
 
-        <label for="provincia">Provincia</label>
-        <select id="provincia" disabled><option value="">Seleziona prima la regione</option></select>
+            <label for="provincia">2. Provincia</label>
+            <select id="provincia" disabled><option value="">Seleziona prima la regione</option></select>
 
-        <label for="comune">Comune</label>
-        <select id="comune" disabled><option value="">Seleziona prima la provincia</option></select>
+            <label for="comune">3. Comune</label>
+            <select id="comune" disabled><option value="">Seleziona prima la provincia</option></select>
 
-        <button id="btn-submit" onclick="iscriviti()">Attiva Notifiche</button>
-        <div id="messaggio"></div>
+            <!-- Topic ntfy -->
+            <label for="ntfy">4. Nome del Canale ntfy (Topic)</label>
+            <input type="text" id="ntfy" placeholder="es. allerta-mio-comune" required>
+            <div class="helper-text">Viene suggerito in automatico col comune, ma puoi modificarlo a piacere.</div>
+
+            <!-- Tasto di conferma -->
+            <button class="btn-primary" id="btn-submit" onclick="iscriviti()">🔔 Attiva Notifiche</button>
+            <div id="messaggio"></div>
+
+            <!-- Sezione Donazioni -->
+            <div class="support-section">
+                <div class="support-title">Ti piace questo progetto libero e gratuito?</div>
+                <div class="support-desc">Questo bot è offerto gratuitamente alla comunità. Se ti è utile, puoi supportare i costi di manutenzione e sviluppo con un piccolo contributo:</div>
+
+                <div class="donation-buttons">
+                    <!-- Buy Me a Coffee -->
+                    <a href="https://buymeacoffee.com/andreaguerri/grazie-per-il-tuo-supporto" target="_blank" rel="noopener noreferrer" class="btn-donate btn-bmac">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-1.001-1.379-.197-.069-.42-.098-.57-.241-.152-.143-.196-.366-.231-.572-.065-.378-.125-.756-.192-1.133-.057-.325-.28-.576-.581-.663-.85-.246-1.705-.48-2.564-.698-1.895-.48-3.805-.83-5.733-1.026C8.016-.07 6.797-.035 5.597.135c-.941.134-1.874.329-2.793.593-.41.118-.737.387-.852.812-.47 1.748-.84 3.522-1.13 5.312-.224 1.385-.382 2.782-.472 4.183-.075 1.163-.097 2.33-.02 3.493.107 1.62.43 3.212 1.054 4.717.388.937 1.002 1.66 1.874 2.146.994.554 2.086.837 3.208.97 1.954.232 3.918.234 5.874.004 1.32-.156 2.616-.492 3.844-1.036.786-.348 1.442-.879 1.905-1.611.83-1.312 1.258-2.817 1.503-4.343.14-.87.23-1.748.29-2.628.02-.303.04-.606.05-.91.314-.047.625-.106.932-.186.915-.24 1.58-.813 1.83-1.724.167-.611.235-1.246.29-1.877zm-3.666 5.867c-.085.626-.226 1.24-.45 1.826-.29.757-.79 1.316-1.528 1.65-.968.437-2.002.668-3.052.766-1.558.145-3.123.14-4.68-.016-.902-.09-1.789-.28-2.635-.635-.615-.258-1.066-.69-1.354-1.282-.36-.738-.52-1.542-.614-2.355-.178-1.548-.204-3.111-.131-4.667.05-1.07.19-2.133.435-3.18.067-.285.247-.492.528-.57.854-.236 1.724-.42 2.597-.547 1.25-.182 2.512-.224 3.771-.194 1.516.036 3.02.222 4.502.58.46.111.758.375.836.852.19.982.35 1.97.464 2.964.12 1.042.17 2.09.18 3.143 0 .36-.02.72-.04 1.08z"/>
+                        </svg>
+                        Offrimi un Caffè
+                    </a>
+
+                    <!-- PayPal -->
+                    <a href="https://www.paypal.me/AndreaGuerri" target="_blank" rel="noopener noreferrer" class="btn-donate btn-paypal">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.789.789 0 0 1 .777-.665h6.772c3.27 0 5.625.795 6.438 3.324.59 1.83.197 3.753-1.084 5.176-1.127 1.252-2.87 1.888-5.074 1.888H9.74a.8.8 0 0 0-.79.674l-.997 6.275a.64.64 0 0 1-.632.535z"/>
+                            <path d="M19.467 8.354c-.06-.197-.13-.388-.21-.574-.813-2.53-3.168-3.324-6.438-3.324H6.046a.789.789 0 0 0-.777.665L2.162 21.99a.64.64 0 0 0 .633.74h4.156l1.045-6.577a.8.8 0 0 1 .79-.674h2.795c4.015 0 7.18-1.63 8.093-6.417.382-1.996.11-3.606-.207-4.708z" opacity="0.6"/>
+                        </svg>
+                        Dona con PayPal
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            Ideato e sviluppato da <b>Andrea Guerri</b> (b4you-lab)<br>
+            Per supporto o segnalazioni: <a href="mailto:andreaguerri.b4you@gmail.com">andreaguerri.b4you@gmail.com</a><br>
+            <span style="font-size: 0.75rem; color: #9ca3af;">Progetto civico open-source indipendente. I dati meteo provengono dal Dipartimento della Protezione Civile (CC-BY-4.0).</span>
+        </footer>
     </div>
 
     <!-- SDK Supabase -->
@@ -91,9 +343,9 @@
         const regioneSelect = document.getElementById('regione');
         const provinciaSelect = document.getElementById('provincia');
         const comuneSelect = document.getElementById('comune');
+        const topicInput = document.getElementById('ntfy');
         const messaggioDiv = document.getElementById('messaggio');
 
-        // Caricamento del dataset completo dei comuni da CDN pubblico (con CORS aperto)
         async function scaricaDatiComuni() {
             try {
                 const url = "https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json";
@@ -101,25 +353,23 @@
                 if (!res.ok) throw new Error("Errore nel download del file comuni");
                 databaseComuni = await res.json();
 
-                // Estrai le regioni uniche ordinate alfabeticamente
                 const regioni = [...new Set(databaseComuni.map(c => c.regione?.nome).filter(Boolean))].sort((a, b) => a.localeCompare('it'));
 
-                regioneSelect.innerHTML = '<option value="">-- Seleziona una Regione --</option>';
+                regioneSelect.innerHTML = '<option value="">-- Seleziona la Regione --</option>';
                 regioni.forEach(reg => {
                     regioneSelect.innerHTML += `<option value="${reg}">${reg}</option>`;
                 });
                 regioneSelect.disabled = false;
             } catch (err) {
-                regioneSelect.innerHTML = '<option value="">Errore caricamento comuni</option>';
-                mostraMessaggio("Impossibile caricare il database dei comuni: " + err.message, "errore");
+                regioneSelect.innerHTML = '<option value="">Errore di caricamento</option>';
+                mostraMessaggio("Impossibile caricare l'elenco dei comuni: " + err.message, "errore");
             }
         }
 
-        // Cambio Regione -> Popola le Province
         regioneSelect.addEventListener('change', () => {
             provinciaSelect.disabled = true;
             comuneSelect.disabled = true;
-            provinciaSelect.innerHTML = '<option value="">-- Seleziona Provincia --</option>';
+            provinciaSelect.innerHTML = '<option value="">-- Seleziona la Provincia --</option>';
             comuneSelect.innerHTML = '<option value="">Seleziona prima la provincia</option>';
 
             const regScelta = regioneSelect.value;
@@ -138,10 +388,9 @@
             provinciaSelect.disabled = false;
         });
 
-        // Cambio Provincia -> Popola i Comuni
         provinciaSelect.addEventListener('change', () => {
             comuneSelect.disabled = true;
-            comuneSelect.innerHTML = '<option value="">-- Seleziona Comune --</option>';
+            comuneSelect.innerHTML = '<option value="">-- Seleziona il Comune --</option>';
 
             const regScelta = regioneSelect.value;
             const provScelta = provinciaSelect.value;
@@ -158,9 +407,21 @@
             comuneSelect.disabled = false;
         });
 
-        // Invio form verso Supabase
+        // Quando seleziona il comune, autocompila il topic con un nome pulito (es. allerta-levico-terme)
+        comuneSelect.addEventListener('change', () => {
+            const comuneScelto = comuneSelect.value;
+            if (comuneScelto) {
+                const slugComune = comuneScelto
+                    .toLowerCase()
+                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // rimuove accenti
+                    .replace(/[^a-z0-9]/g, '-'); // rimpiazza spazi e caratteri speciali con trattino
+                
+                topicInput.value = `allerta-${slugComune}`;
+            }
+        });
+
         async function iscriviti() {
-            const topic = document.getElementById('ntfy').value.trim();
+            const topic = topicInput.value.trim();
             const comune = comuneSelect.value;
 
             if (!topic || !comune) {
@@ -168,7 +429,7 @@
                 return;
             }
 
-            mostraMessaggio("Salvataggio in corso...", "loading-text");
+            mostraMessaggio("Salvataggio dell'iscrizione in corso...", "helper-text");
 
             try {
                 const { error } = await supabaseClient
@@ -177,9 +438,14 @@
 
                 if (error) throw error;
 
-                mostraMessaggio(`✅ Registrazione completata!<br>Riceverai le allerte per <b>${comune}</b> sul canale ntfy: <code>${topic}</code>`, "successo");
+                mostraMessaggio(`
+                    🎉 <b>Iscrizione completata con successo!</b><br><br>
+                    Per ricevere gli avvisi per <b>${comune}</b>:<br>
+                    1. Apri l'app <b>ntfy</b> sul telefono (o visita <a href="https://ntfy.sh/${topic}" target="_blank" style="color: #065f46; font-weight: bold; text-decoration: underline;">ntfy.sh/${topic}</a>)<br>
+                    2. Iscriviti al canale: <code>${topic}</code>
+                `, "successo");
             } catch (err) {
-                mostraMessaggio("Errore salvataggio Supabase: " + err.message, "errore");
+                mostraMessaggio("Errore durante il salvataggio: " + err.message, "errore");
             }
         }
 
