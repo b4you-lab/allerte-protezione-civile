@@ -113,7 +113,7 @@ def main():
             print(f"  -> Stato rilevato: {colori_nome.get(livello, 'Sconosciuto')}")
 
             # Se c'è un'allerta attiva ed è cambiata rispetto allo stato precedente
-            if livello >= 1 and livello != livello_precedente:
+           if True: 
                 msg = f"🚨 Allerta {colori_nome.get(livello)}\nComune: {comune}\nControlla gli aggiornamenti della Protezione Civile."
                 for topic in topics:
                     notifiche.append((topic, msg))
