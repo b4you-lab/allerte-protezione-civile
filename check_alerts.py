@@ -31,7 +31,7 @@ def carica_stato():
         try:
             with open('stato_precedente.json', 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception as e:
+        except Exception:
             return {}
     return {}
 
@@ -67,7 +67,7 @@ def estrai_livello(dati):
         return 0
 
 def main():
-    print(f"--- Controllo Allerte Protezione Civile (MODALITÀ TEST) ---")
+    print(f"--- Controllo Allerte Protezione Civile ---")
     print(f"Data/Ora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     try:
@@ -88,6 +88,7 @@ def main():
         if comune and topic:
             comuni.setdefault(comune, []).append(topic)
 
+    stato_precedente = carica_stato()
     stato_attuale = {}
     notifiche = []
 
@@ -100,25 +101,37 @@ def main():
             dati = r.json()
 
             livello = estrai_livello(dati)
+            livello_precedente = stato_precedente.get(comune, 0)
             stato_attuale[comune] = livello
 
-            # === SIMULAZIONE NOTIFICA TEST ===
-            print("  -> Genero notifica di test forzata...")
-            msg = f"🔔 TEST NOTIFICA PROTEZIONE CIVILE\nComune monitorato: {comune}\nSe leggi questo messaggio, il bot funziona al 100%!"
-            for topic in topics:
-                notifiche.append((topic, msg))
+            colori_nome = {0: "VERDE (Nessuna allerta)", 1: "GIALLA 🟡", 2: "ARANCIONE 🟠", 3: "ROSSA 🔴"}
+            print(f"  -> Stato attuale: {colori_nome.get(livello, 'Sconosciuto')}")
+
+            # Invia SOLO se c'è allerta reale (>= 1) ed è cambiata rispetto all'ultimo controllo
+            if livello >= 1 and livello != livello_precedente:
+                msg = f"🚨 ALLERTA METEO {colori_nome.get(livello)}\nComune: {comune}\nSi raccomanda di seguire le indicazioni della Protezione Civile locale."
+                for topic in topics:
+                    notifiche.append((topic, msg))
+            elif livello == 0:
+                print("  -> Nessuna allerta in corso.")
+            else:
+                print(f"  -> Livello invariato ({livello_precedente}), notifica già inviata in precedenza.")
 
         except Exception as e:
             print(f"❌ Errore durante il controllo del comune '{comune}': {e}")
+            if comune in stato_precedente:
+                stato_attuale[comune] = stato_precedente[comune]
 
     # Invia notifiche
     if notifiche:
-        print(f"\nInvio di {len(notifiche)} notifiche in corso...")
+        print(f"\nInvio di {len(notifiche)} allerte...")
         for topic, msg in notifiche:
             invia_notifica_ntfy(topic, msg)
+    else:
+        print("\nNessuna nuova allerta da notificare.")
 
     salva_stato(stato_attuale)
-    print("\nTest completato!")
+    print("\nControllo completato regolarmente.")
 
 if __name__ == "__main__":
     main()
