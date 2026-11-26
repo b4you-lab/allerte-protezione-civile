@@ -3,118 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iscrizione Allerte Protezione Civile</title>
+    <title>Allerte Protezione Civile</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-        label { display: block; margin-top: 1.2rem; font-weight: 600; font-size: 0.9rem; }
-        select, input, button { width: 100%; padding: 0.6rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        button { margin-top: 1.5rem; background: #0066cc; color: white; border: none; font-weight: bold; cursor: pointer; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 500px;
+            margin: 2.5rem auto;
+            padding: 0 1.2rem;
+            color: #1a1a1a;
+            background-color: #fafafa;
+        }
+        .card {
+            background: #ffffff;
+            padding: 1.8rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+            border: 1px solid #eaeaea;
+        }
+        h2 { margin-top: 0; color: #111; font-size: 1.4rem; }
+        p.subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.4; }
+        label { display: block; margin-top: 1rem; font-weight: 600; font-size: 0.85rem; color: #333; }
+        select, input, button {
+            width: 100%;
+            padding: 0.65rem 0.8rem;
+            margin-top: 0.35rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+        select:disabled, input:disabled { background-color: #f3f3f3; cursor: not-allowed; }
+        button {
+            margin-top: 1.6rem;
+            background: #0066cc;
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
         button:hover { background: #004c99; }
-        #messaggio { margin-top: 1.2rem; padding: 0.8rem; border-radius: 6px; display: none; font-size: 0.9rem; }
-        .successo { background: #d4edda; color: #155724; display: block !important; }
-        .errore { background: #f8d7da; color: #721c24; display: block !important; }
+        #messaggio {
+            margin-top: 1.2rem;
+            padding: 0.8rem;
+            border-radius: 6px;
+            display: none;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        .successo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block !important; }
+        .errore { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block !important; }
+        .loading-text { font-size: 0.85rem; color: #777; margin-top: 0.4rem; }
     </style>
 </head>
 <body>
-    <h2>Allerte Protezione Civile</h2>
-    <p style="color: #666; font-size: 0.9rem;">Ricevi notifiche push tramite <strong>ntfy</strong> sul tuo comune.</p>
 
-    <label for="ntfy">Topic ntfy personale</label>
-    <input type="text" id="ntfy" placeholder="es. mia-allerta-protezione-civile-77" required>
+    <div class="card">
+        <h2>🚨 Notifiche Protezione Civile</h2>
+        <p class="subtitle">Ricevi avvisi meteo in tempo reale per il tuo comune tramite l'app <strong>ntfy</strong>.</p>
 
-    <label for="regione">Regione</label>
-    <select id="regione" required><option value="">Caricamento...</option></select>
+        <label for="ntfy">Il tuo Topic ntfy personale</label>
+        <input type="text" id="ntfy" placeholder="es. allerta-mario-rossi-84" required>
 
-    <label for="provincia">Provincia</label>
-    <select id="provincia" disabled required><option value="">Seleziona prima la regione</option></select>
+        <label for="regione">Regione</label>
+        <select id="regione" disabled><option value="">Scaricamento elenco comuni...</option></select>
 
-    <label for="comune">Comune</label>
-    <select id="comune" disabled required><option value="">Seleziona prima la provincia</option></select>
+        <label for="provincia">Provincia</label>
+        <select id="provincia" disabled><option value="">Seleziona prima la regione</option></select>
 
-    <button onclick="iscriviti()">Iscriviti alle Notifiche</button>
-    <div id="messaggio"></div>
+        <label for="comune">Comune</label>
+        <select id="comune" disabled><option value="">Seleziona prima la provincia</option></select>
 
+        <button id="btn-submit" onclick="iscriviti()">Attiva Notifiche</button>
+        <div id="messaggio"></div>
+    </div>
+
+    <!-- SDK Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const SUPABASE_URL = 'https://pkaygmgqdbnajsfjjwxj.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrYXlnbWdxZGJuYWpzZmpqd3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU2MjgwODQsImV4cCI6MjExMTIwNDA4NH0.XJgDZ1voMOHDG0iisIWgcLVkW4sKKTMpLWVsBH0A1CE';
+        const SUPABASE_URL = "https://pkaygmgqdbnajsfjjwxj.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrYXlnbWdxZGJuYWpzZmpqd3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU2MjgwODQsImV4cCI6MjExMTIwNDA4NH0.XJgDZ1voMOHDG0iisIWgcLVkW4sKKTMpLWVsBH0A1CE";
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const API_BASE = 'https://allertameteo.app/api';
+
+        let databaseComuni = [];
 
         const regioneSelect = document.getElementById('regione');
         const provinciaSelect = document.getElementById('provincia');
         const comuneSelect = document.getElementById('comune');
         const messaggioDiv = document.getElementById('messaggio');
 
-        async function caricaRegioni() {
+        // Caricamento del dataset completo dei comuni da CDN pubblico (con CORS aperto)
+        async function scaricaDatiComuni() {
             try {
-                const res = await fetch(`${API_BASE}/regioni`);
-                const json = await res.json();
-                const lista = Array.isArray(json) ? json : (json.data || []);
+                const url = "https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json";
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Errore nel download del file comuni");
+                databaseComuni = await res.json();
 
-                regioneSelect.innerHTML = '<option value="">-- Seleziona Regione --</option>';
-                lista.forEach(r => {
-                    const nome = typeof r === 'string' ? r : (r.nome || r.name);
-                    regioneSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
+                // Estrai le regioni uniche ordinate alfabeticamente
+                const regioni = [...new Set(databaseComuni.map(c => c.regione?.nome).filter(Boolean))].sort((a, b) => a.localeCompare('it'));
+
+                regioneSelect.innerHTML = '<option value="">-- Seleziona una Regione --</option>';
+                regioni.forEach(reg => {
+                    regioneSelect.innerHTML += `<option value="${reg}">${reg}</option>`;
                 });
-            } catch (e) {
-                regioneSelect.innerHTML = '<option value="">Errore nel caricamento regioni</option>';
+                regioneSelect.disabled = false;
+            } catch (err) {
+                regioneSelect.innerHTML = '<option value="">Errore caricamento comuni</option>';
+                mostraMessaggio("Impossibile caricare il database dei comuni: " + err.message, "errore");
             }
         }
 
-        regioneSelect.addEventListener('change', async () => {
+        // Cambio Regione -> Popola le Province
+        regioneSelect.addEventListener('change', () => {
             provinciaSelect.disabled = true;
             comuneSelect.disabled = true;
-            provinciaSelect.innerHTML = '<option value="">Caricamento...</option>';
+            provinciaSelect.innerHTML = '<option value="">-- Seleziona Provincia --</option>';
             comuneSelect.innerHTML = '<option value="">Seleziona prima la provincia</option>';
-            if (!regioneSelect.value) return;
 
-            try {
-                const res = await fetch(`${API_BASE}/province?regione=${encodeURIComponent(regioneSelect.value)}`);
-                const json = await res.json();
-                const lista = Array.isArray(json) ? json : (json.data || []);
+            const regScelta = regioneSelect.value;
+            if (!regScelta) return;
 
-                provinciaSelect.innerHTML = '<option value="">-- Seleziona Provincia --</option>';
-                lista.forEach(p => {
-                    const nome = typeof p === 'string' ? p : (p.nome || p.name);
-                    provinciaSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
-                });
-                provinciaSelect.disabled = false;
-            } catch (e) {
-                provinciaSelect.innerHTML = '<option value="">Errore caricamento province</option>';
-            }
+            const province = [...new Set(
+                databaseComuni
+                    .filter(c => c.regione?.nome === regScelta)
+                    .map(c => c.provincia?.nome)
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare('it'));
+
+            province.forEach(prov => {
+                provinciaSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
+            });
+            provinciaSelect.disabled = false;
         });
 
-        provinciaSelect.addEventListener('change', async () => {
+        // Cambio Provincia -> Popola i Comuni
+        provinciaSelect.addEventListener('change', () => {
             comuneSelect.disabled = true;
-            comuneSelect.innerHTML = '<option value="">Caricamento...</option>';
-            if (!provinciaSelect.value) return;
+            comuneSelect.innerHTML = '<option value="">-- Seleziona Comune --</option>';
 
-            try {
-                const res = await fetch(`${API_BASE}/comuni?provincia=${encodeURIComponent(provinciaSelect.value)}`);
-                const json = await res.json();
-                const lista = Array.isArray(json) ? json : (json.data || []);
+            const regScelta = regioneSelect.value;
+            const provScelta = provinciaSelect.value;
+            if (!provScelta) return;
 
-                comuneSelect.innerHTML = '<option value="">-- Seleziona Comune --</option>';
-                lista.forEach(c => {
-                    const nome = typeof c === 'string' ? c : (c.nome || c.name);
-                    comuneSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
-                });
-                comuneSelect.disabled = false;
-            } catch (e) {
-                comuneSelect.innerHTML = '<option value="">Errore caricamento comuni</option>';
-            }
+            const comuni = databaseComuni
+                .filter(c => c.regione?.nome === regScelta && c.provincia?.nome === provScelta)
+                .map(c => c.nome)
+                .sort((a, b) => a.localeCompare('it'));
+
+            comuni.forEach(com => {
+                comuneSelect.innerHTML += `<option value="${com}">${com}</option>`;
+            });
+            comuneSelect.disabled = false;
         });
 
+        // Invio form verso Supabase
         async function iscriviti() {
             const topic = document.getElementById('ntfy').value.trim();
             const comune = comuneSelect.value;
 
             if (!topic || !comune) {
-                mostraMessaggio('Compila tutti i campi prima di procedere.', 'errore');
+                mostraMessaggio("Compila tutti i campi prima di procedere.", "errore");
                 return;
             }
+
+            mostraMessaggio("Salvataggio in corso...", "loading-text");
 
             try {
                 const { error } = await supabaseClient
@@ -123,9 +177,9 @@
 
                 if (error) throw error;
 
-                mostraMessaggio(`Iscrizione registrata! Riceverai le allerte per <b>${comune}</b> sul topic ntfy <code>${topic}</code>.`, 'successo');
+                mostraMessaggio(`✅ Registrazione completata!<br>Riceverai le allerte per <b>${comune}</b> sul canale ntfy: <code>${topic}</code>`, "successo");
             } catch (err) {
-                mostraMessaggio('Errore durante il salvataggio: ' + err.message, 'errore');
+                mostraMessaggio("Errore salvataggio Supabase: " + err.message, "errore");
             }
         }
 
@@ -134,7 +188,7 @@
             messaggioDiv.className = classe;
         }
 
-        caricaRegioni();
+        scaricaDatiComuni();
     </script>
 </body>
 </html>
