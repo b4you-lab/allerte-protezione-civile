@@ -8,7 +8,6 @@ SUPABASE_URL = "https://pkaygmgqdbnajsfjjwxj.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrYXlnbWdxZGJuYWpzZmpqd3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU2MjgwODQsImV4cCI6MjExMTIwNDA4NH0.XJgDZ1voMOHDG0iisIWgcLVkW4sKKTMpLWVsBH0A1CE"
 API_BASE = "https://allertameteo.app/api"
 
-# Header per evitare blocchi da parte dell'API
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
@@ -28,13 +27,11 @@ def invia_notifica_ntfy(topic, messaggio, titolo="Allerta Protezione Civile"):
         print(f"❌ Errore invio notifica a {topic}: {e}")
 
 def carica_stato():
-    """Carica lo stato precedente proteggendosi da file vuoti o corrotti"""
     if os.path.exists('stato_precedente.json') and os.path.getsize('stato_precedente.json') > 0:
         try:
             with open('stato_precedente.json', 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"File stato_precedente.json non valido ({e}), inizializzo a vuoto.")
             return {}
     return {}
 
@@ -53,7 +50,6 @@ def leggi_iscrizioni():
     return r.json()
 
 def estrai_livello(dati):
-    """Estrae il livello (0: Verde, 1: Gialla, 2: Arancione, 3: Rossa)"""
     try:
         payload = dati.get("data", dati)
         oggi = payload.get("oggi", {})
@@ -71,7 +67,7 @@ def estrai_livello(dati):
         return 0
 
 def main():
-    print(f"--- Controllo Allerte Protezione Civile ---")
+    print(f"--- Controllo Allerte Protezione Civile (MODALITÀ TEST) ---")
     print(f"Data/Ora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     try:
@@ -82,10 +78,9 @@ def main():
         sys.exit(1)
 
     if not iscrizioni:
-        print("Nessuna iscrizione attiva nel database. Termino.")
+        print("Nessuna iscrizione attiva. Termino.")
         return
 
-    # Raggruppa i topic per comune
     comuni = {}
     for isc in iscrizioni:
         comune = isc.get('comune')
@@ -93,12 +88,11 @@ def main():
         if comune and topic:
             comuni.setdefault(comune, []).append(topic)
 
-    stato_precedente = carica_stato()
     stato_attuale = {}
     notifiche = []
 
     for comune, topics in comuni.items():
-        print(f"\nVerifica comune: '{comune}' (topic collegati: {topics})")
+        print(f"\nVerifica comune: '{comune}' (topic: {topics})")
         try:
             url = f"{API_BASE}/alert/{requests.utils.quote(comune)}"
             r = requests.get(url, headers=HEADERS, timeout=15)
@@ -106,38 +100,25 @@ def main():
             dati = r.json()
 
             livello = estrai_livello(dati)
-            livello_precedente = stato_precedente.get(comune, 0)
             stato_attuale[comune] = livello
 
-            colori_nome = {0: "VERDE (Nessuna allerta)", 1: "GIALLA 🟡", 2: "ARANCIONE 🟠", 3: "ROSSA 🔴"}
-            print(f"  -> Stato rilevato: {colori_nome.get(livello, 'Sconosciuto')}")
-
-            # Se c'è un'allerta attiva ed è cambiata rispetto allo stato precedente
-           if True: 
-                msg = f"🚨 Allerta {colori_nome.get(livello)}\nComune: {comune}\nControlla gli aggiornamenti della Protezione Civile."
-                for topic in topics:
-                    notifiche.append((topic, msg))
-            else:
-                if livello == 0:
-                    print(f"  -> Nessuna notifica necessaria (livello verde).")
-                else:
-                    print(f"  -> Livello invariato rispetto al controllo precedente ({livello_precedente}), nessuna nuova notifica inviata.")
+            # === SIMULAZIONE NOTIFICA TEST ===
+            print("  -> Genero notifica di test forzata...")
+            msg = f"🔔 TEST NOTIFICA PROTEZIONE CIVILE\nComune monitorato: {comune}\nSe leggi questo messaggio, il bot funziona al 100%!"
+            for topic in topics:
+                notifiche.append((topic, msg))
 
         except Exception as e:
             print(f"❌ Errore durante il controllo del comune '{comune}': {e}")
-            if comune in stato_precedente:
-                stato_attuale[comune] = stato_precedente[comune]
 
     # Invia notifiche
     if notifiche:
         print(f"\nInvio di {len(notifiche)} notifiche in corso...")
         for topic, msg in notifiche:
             invia_notifica_ntfy(topic, msg)
-    else:
-        print("\nNessuna nuova notifica da inviare in questa esecuzione.")
 
     salva_stato(stato_attuale)
-    print("\nControllo completato con successo.")
+    print("\nTest completato!")
 
 if __name__ == "__main__":
     main()
